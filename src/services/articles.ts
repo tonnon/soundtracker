@@ -67,12 +67,15 @@ export function searchArticles(query: string): Article[] {
   const term = normalize(query.trim())
   if (!term) return []
 
-  return ALL_ARTICLES_DESC.filter((article) => {
-    const haystack = normalize(
-      [article.title, article.excerpt, ...article.tags].join(' '),
-    )
-    return haystack.includes(term)
+  return ALL_ARTICLES_DESC.map((article) => {
+    const titleMatch = normalize(article.title).includes(term)
+    const restMatch = normalize([article.excerpt, ...article.tags].join(' ')).includes(term)
+    const score = titleMatch ? 2 : restMatch ? 1 : 0
+    return { article, score }
   })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.article)
 }
 
 export function getRelated(article: Article, limit = 3): Article[] {

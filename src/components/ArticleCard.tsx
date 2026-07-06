@@ -71,9 +71,9 @@ export function ArticleCard({
       <Link
         to="/noticia/$slug"
         params={{ slug: article.slug }}
-        className={cn('group grid gap-8 md:grid-cols-2 md:items-center', className)}
+        className={cn('group grid gap-8 lg:grid-cols-2 lg:items-center', className)}
       >
-        <CardImage article={article} priority={priority} className="aspect-video md:aspect-[4/3]" />
+        <CardImage article={article} priority={priority} className="aspect-video lg:aspect-[4/3]" />
         <div className="space-y-5">
           <CategoryChip category={article.category} size="md" />
           <h1 className="text-balance font-display text-3xl font-bold tracking-tight text-text sm:text-4xl lg:text-5xl">
@@ -96,7 +96,7 @@ export function ArticleCard({
       <Link
         to="/noticia/$slug"
         params={{ slug: article.slug }}
-        className={cn('group flex items-center gap-4', className)}
+        className={cn('group flex items-center gap-4 border-l-2 pl-4', meta.border, className)}
       >
         <CardImage article={article} className="aspect-square w-16 shrink-0 sm:w-20" />
         <div className="min-w-0 space-y-1.5">

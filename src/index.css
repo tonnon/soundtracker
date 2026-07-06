@@ -66,6 +66,20 @@
   animation: cursor-blink 1s steps(1) infinite;
 }
 
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.22s;
+  animation-timing-function: ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 @utility container-editorial {
   width: 100%;
   max-width: 1280px;
