@@ -1,6 +1,6 @@
 # soundtracker
 
-A real-news curation of soundtracks for film, TV and games — headlines, images and links aggregated live from the [GDELT Project](https://www.gdeltproject.org/), a free, keyless global news index. soundtracker doesn't write or republish the stories it shows; every card links back to the original source.
+A real-news curation of soundtracks for film, TV and games — headlines, images, summaries and links aggregated live from the [GNews](https://gnews.io/) API. soundtracker doesn't write or republish the stories it shows in full; each story page shows a short real summary and links back to the original source to read the complete coverage.
 
 ## Stack
 
@@ -18,8 +18,11 @@ A real-news curation of soundtracks for film, TV and games — headlines, images
 
 ## Getting started
 
+Requires a free [GNews API key](https://gnews.io) (100 requests/day on the free tier).
+
 ```bash
 npm install
+cp .env.example .env   # then add your GNEWS API key to .env
 npm run dev
 ```
 
@@ -35,5 +38,6 @@ npm run dev
 
 ## Notes
 
-- News is fetched client-side from GDELT's DOC API (`api.gdeltproject.org`), which is free and requires no API key, but rate-limits requests per IP. Results are cached in `sessionStorage` for a few minutes to keep repeat page loads fast and requests low.
-- A news item's detail page URL is self-contained (the item's data is base64url-encoded in the route param) — there's no backend, so nothing needs to be looked up by ID.
+- News is fetched client-side from GNews's `/search` endpoint. The free tier caps at 100 requests/day and throttles bursts of concurrent calls, so the three sections are fetched one after another (with a short gap) instead of in parallel, and results are cached in `sessionStorage` for 30 minutes to keep repeat page loads fast and requests low.
+- A news item's detail page URL is self-contained (the item's data, including its summary, is base64url-encoded in the route param) — there's no backend, so nothing needs to be looked up by ID.
+- The story page shows GNews's `description` field as a short summary, plus a reading-progress indicator — never the full third-party article body.
