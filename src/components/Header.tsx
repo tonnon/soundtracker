@@ -3,14 +3,18 @@ import { Link } from '@tanstack/react-router'
 import { Menu, Search } from 'lucide-react'
 import { CATEGORY_META, CATEGORY_ORDER } from '@/lib/category'
 import { Sheet, SheetTrigger, SheetContent, SheetClose } from '@/components/ui/sheet'
+import { Logo } from '@/components/Logo'
 import { cn } from '@/lib/utils'
 
 function Wordmark() {
   return (
-    <Link to="/" className="flex items-center font-display text-xl font-bold tracking-tight text-text">
-      soundtracker
-      <span className="ml-0.5 text-amber animate-cursor-blink" aria-hidden="true">
-        ▮
+    <Link to="/" className="flex items-center gap-2.5 font-display text-xl font-bold text-text">
+      <Logo className="size-7 text-text" />
+      <span className="flex items-center">
+        SOUNDTRACKER
+        <span className="ml-0.5 text-amber animate-cursor-blink" aria-hidden="true">
+          ▮
+        </span>
       </span>
     </Link>
   )
@@ -24,7 +28,7 @@ function CategoryNavLinks({ onNavigate, className }: { onNavigate?: () => void; 
         return (
           <Link
             key={category}
-            to="/editoria/$category"
+            to="/category/$category"
             params={{ category }}
             onClick={onNavigate}
             className={cn(
@@ -52,15 +56,15 @@ export function Header() {
       <div className="container-editorial flex h-full items-center justify-between">
         <Wordmark />
 
-        <nav aria-label="Editorias" className="hidden items-center gap-8 md:flex">
+        <nav aria-label="Sections" className="hidden items-center gap-8 md:flex">
           <CategoryNavLinks />
         </nav>
 
         <div className="flex items-center gap-2">
           <Link
-            to="/busca"
+            to="/search"
             className="hidden items-center gap-2 rounded-sm p-2 text-muted transition-colors hover:text-text md:flex"
-            aria-label="Buscar"
+            aria-label="Search"
           >
             <Search className="size-5" aria-hidden="true" />
           </Link>
@@ -70,26 +74,26 @@ export function Header() {
               <button
                 type="button"
                 className="flex items-center justify-center rounded-sm p-2 text-text md:hidden"
-                aria-label="Abrir menu"
+                aria-label="Open menu"
               >
                 <Menu className="size-6" aria-hidden="true" />
               </button>
             </SheetTrigger>
-            <SheetContent title="Menu de navegação">
-              <nav aria-label="Editorias" className="mt-10 flex flex-col gap-6">
+            <SheetContent title="Navigation menu">
+              <nav aria-label="Sections" className="mt-10 flex flex-col gap-6">
                 <CategoryNavLinks onNavigate={() => setMobileOpen(false)} className="text-base" />
                 <SheetClose asChild>
                   <Link
-                    to="/busca"
+                    to="/search"
                     className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted hover:text-text"
                   >
                     <Search className="size-4" aria-hidden="true" />
-                    Buscar
+                    Search
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>
-                  <Link to="/sobre" className="font-mono text-xs uppercase tracking-widest text-muted hover:text-text">
-                    Sobre
+                  <Link to="/about" className="font-mono text-xs uppercase tracking-widest text-muted hover:text-text">
+                    About
                   </Link>
                 </SheetClose>
               </nav>

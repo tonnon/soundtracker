@@ -17,7 +17,7 @@ export const CATEGORY_ORDER: Category[] = ['cinema', 'series', 'games']
 export const CATEGORY_META: Record<Category, CategoryMeta> = {
   cinema: {
     label: 'Cinema',
-    description: 'Scores de longas, perfis de compositores e a corrida por prêmios de trilha original.',
+    description: 'Feature film scores, composer profiles, and the race for original score awards.',
     text: 'text-amber',
     bg: 'bg-amber',
     border: 'border-amber',
@@ -27,8 +27,8 @@ export const CATEGORY_META: Record<Category, CategoryMeta> = {
     groupHoverBorder: 'group-hover:border-amber',
   },
   series: {
-    label: 'Séries',
-    description: 'Temas, leitmotivs e o trabalho de composição sob a pressão do formato episódico.',
+    label: 'Series',
+    description: 'Themes, leitmotifs, and scoring under the pressure of the episodic format.',
     text: 'text-signal',
     bg: 'bg-signal',
     border: 'border-signal',
@@ -39,7 +39,7 @@ export const CATEGORY_META: Record<Category, CategoryMeta> = {
   },
   games: {
     label: 'Games',
-    description: 'Trilha adaptativa, áudio interativo e a cena sonora que reage ao jogador.',
+    description: 'Adaptive scoring, interactive audio, and the soundscape that reacts to the player.',
     text: 'text-rec',
     bg: 'bg-rec',
     border: 'border-rec',

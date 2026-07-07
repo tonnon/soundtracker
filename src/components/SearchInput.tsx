@@ -45,13 +45,13 @@ export function SearchInput({
       )}
     >
       <Search className="size-5 shrink-0 text-muted" aria-hidden="true" />
-      <span className="sr-only">Buscar notícias</span>
+      <span className="sr-only">Search news</span>
       <input
         ref={inputRef}
         type="search"
         value={value}
         onChange={handleChange}
-        placeholder="Buscar por compositor, filme, série ou jogo…"
+        placeholder="Search by composer, film, series or game…"
         className="w-full bg-transparent text-base text-text placeholder:text-muted focus:outline-none"
       />
     </label>

@@ -7,17 +7,17 @@ export const Route = createFileRoute('/$')({
 })
 
 function NotFoundPage() {
-  useDocumentTitle('Faixa não encontrada')
+  useDocumentTitle('Track not found')
 
   return (
     <div className="container-editorial flex flex-col items-center gap-6 py-24 text-center">
-      <p className="font-mono text-xs uppercase tracking-widest text-muted">Erro 404</p>
-      <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">Faixa não encontrada</h1>
+      <p className="font-mono text-xs uppercase tracking-widest text-muted">Error 404</p>
+      <h1 className="font-display text-3xl font-bold text-text sm:text-4xl">Track not found</h1>
       <p className="max-w-sm text-muted">
-        Essa página não existe ou foi movida. Que tal voltar para a home e descobrir a próxima trilha?
+        This page doesn't exist or has been moved. How about heading back home to find the next story?
       </p>
       <Button asChild>
-        <Link to="/">Voltar para a home</Link>
+        <Link to="/">Back to home</Link>
       </Button>
     </div>
   )
