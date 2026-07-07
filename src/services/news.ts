@@ -1,7 +1,9 @@
 import type { Category, NewsItem } from '@/data/types'
 
-const GNEWS_ENDPOINT = 'https://gnews.io/api/v4/search'
-const GNEWS_API_KEY = import.meta.env.VITE_GNEWS_API_KEY as string | undefined
+// Same-origin proxy (api/news.ts on Vercel, mirrored for dev in vite.config.ts)
+// instead of calling gnews.io directly — GNews doesn't reliably send CORS
+// headers to the browser, and this also keeps the API key server-side only.
+const NEWS_PROXY_ENDPOINT = '/api/news'
 
 // Plain keyword queries, not quoted-phrase OR groups — GNews's free tier
 // returns far fewer full articles for exact-phrase/boolean queries (as low as
@@ -80,14 +82,11 @@ export function decodeNewsId(id: string): NewsItem | null {
 }
 
 async function queryGnews(query: string, max: number): Promise<GnewsArticle[]> {
-  if (!GNEWS_API_KEY) {
-    throw new Error('Missing VITE_GNEWS_API_KEY — copy .env.example to .env and add your free GNews API key.')
-  }
-  const url = `${GNEWS_ENDPOINT}?q=${encodeURIComponent(query)}&lang=en&max=${max}&sortby=publishedAt&apikey=${GNEWS_API_KEY}`
+  const url = `${NEWS_PROXY_ENDPOINT}?q=${encodeURIComponent(query)}&max=${max}`
   const res = await fetch(url)
   if (!res.ok) {
     const body = await res.json().catch(() => null)
-    const message = body?.errors?.[0] ?? `GNews request failed (${res.status})`
+    const message = body?.errors?.[0] ?? body?.error ?? `News request failed (${res.status})`
     throw new Error(message)
   }
   const json = await res.json()
