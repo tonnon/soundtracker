@@ -1,22 +1,24 @@
 import type { Category, NewsItem } from '@/data/types'
 
-const GDELT_ENDPOINT = 'https://api.gdeltproject.org/api/v2/doc/doc'
+const GNEWS_ENDPOINT = 'https://gnews.io/api/v4/search'
+const GNEWS_API_KEY = import.meta.env.VITE_GNEWS_API_KEY as string | undefined
 
-// sourcelang:english keeps the feed in one language — without it GDELT mixes
-// in matches from non-English outlets (translated titles, foreign domains).
+// Plain keyword queries, not quoted-phrase OR groups — GNews's free tier
+// returns far fewer full articles for exact-phrase/boolean queries (as low as
+// 0-1 results) than for a simple relevance-ranked keyword search, even when
+// the phrase query matches more articles in total.
 const CATEGORY_QUERY: Record<Category, string> = {
-  cinema: '(film score OR movie soundtrack) composer sourcelang:english',
-  series: '(tv series score OR series soundtrack) composer sourcelang:english',
-  games: '(video game soundtrack OR game score) composer sourcelang:english',
+  cinema: 'film composer',
+  series: 'series soundtrack',
+  games: 'video game composer',
 }
 
-// One combined query for the home page instead of three parallel ones — GDELT
-// is a free, keyless API that rate-limits per IP, and firing three requests at
-// once for a single page view is enough to trip that limit for a real visitor.
-const COMBINED_QUERY =
-  '(film score OR movie soundtrack OR tv series score OR series soundtrack OR video game soundtrack OR game score) composer sourcelang:english'
-
-const CACHE_TTL_MS = 10 * 60 * 1000
+// GNews's free tier hard-caps at 10 articles per request no matter what `max`
+// asks for, and rate-limits bursts of concurrent requests regardless of the
+// 100/day quota — so the three sections are fetched one after another instead
+// of with Promise.all, trading a slightly slower home load for not tripping it.
+const CACHE_TTL_MS = 30 * 60 * 1000
+const MAX_RESULTS = 10
 
 interface CacheEntry {
   expiresAt: number
@@ -44,19 +46,17 @@ function writeCache(key: string, items: NewsItem[]): void {
   }
 }
 
-interface GdeltArticle {
-  url: string
-  title: string
-  seendate: string
-  socialimage?: string
-  domain: string
-  language?: string
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function parseSeenDate(seendate: string): string {
-  // GDELT format: YYYYMMDDTHHMMSSZ
-  const iso = `${seendate.slice(0, 4)}-${seendate.slice(4, 6)}-${seendate.slice(6, 8)}T${seendate.slice(9, 11)}:${seendate.slice(11, 13)}:${seendate.slice(13, 15)}Z`
-  return new Date(iso).toISOString()
+interface GnewsArticle {
+  title: string
+  description?: string | null
+  url: string
+  image: string | null
+  publishedAt: string
+  source: { name: string; url: string }
 }
 
 /** The route param for a news item is the item itself, base64url-encoded — there's
@@ -79,27 +79,23 @@ export function decodeNewsId(id: string): NewsItem | null {
   }
 }
 
-async function queryGdelt(query: string, maxrecords: number): Promise<GdeltArticle[]> {
-  const url = `${GDELT_ENDPOINT}?query=${encodeURIComponent(query)}&mode=artlist&format=json&maxrecords=${maxrecords}&sort=hybridrel`
-  // GDELT can hang for 20-30s under load instead of failing fast, which leaves
-  // the skeleton on screen far longer than a real error would — an explicit
-  // timeout surfaces the error state at a reasonable point instead.
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) }).catch(() => {
-    throw new Error('GDELT took too long to respond — try again in a few seconds')
-  })
-  if (!res.ok) throw new Error(`GDELT request failed (${res.status})`)
-  const text = await res.text()
-  try {
-    const json = JSON.parse(text)
-    return json.articles ?? []
-  } catch {
-    // GDELT returns a plain-text rate-limit notice (not JSON) when throttled.
-    throw new Error('GDELT rate limit — try again in a few seconds')
+async function queryGnews(query: string, max: number): Promise<GnewsArticle[]> {
+  if (!GNEWS_API_KEY) {
+    throw new Error('Missing VITE_GNEWS_API_KEY — copy .env.example to .env and add your free GNews API key.')
   }
+  const url = `${GNEWS_ENDPOINT}?q=${encodeURIComponent(query)}&lang=en&max=${max}&sortby=publishedAt&apikey=${GNEWS_API_KEY}`
+  const res = await fetch(url)
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const message = body?.errors?.[0] ?? `GNews request failed (${res.status})`
+    throw new Error(message)
+  }
+  const json = await res.json()
+  return json.articles ?? []
 }
 
-/** Infers which beat a headline actually belongs to, for queries (combined feed,
- * search) that span all three categories in a single GDELT request. */
+/** Infers which beat a headline actually belongs to, for queries (search) that
+ * span all three categories in a single GNews request. */
 function classifyCategory(title: string): Category {
   const haystack = title.toLowerCase()
   if (/\bgame\b|video game/.test(haystack)) return 'games'
@@ -107,10 +103,9 @@ function classifyCategory(title: string): Category {
   return 'cinema'
 }
 
-function dedupe(articles: GdeltArticle[]): GdeltArticle[] {
-  // GDELT often indexes the same story more than once — syndication, mirrors,
-  // or just crawling it again — so the same headline can appear twice in one
-  // response. De-dupe by URL first, then by normalized title as a fallback
+function dedupe(articles: GnewsArticle[]): GnewsArticle[] {
+  // The same wire story sometimes gets indexed more than once (syndication,
+  // re-crawls) — de-dupe by URL first, then by normalized title as a fallback
   // for the same story republished at a different URL.
   const seenUrls = new Set<string>()
   const seenTitles = new Set<string>()
@@ -123,57 +118,53 @@ function dedupe(articles: GdeltArticle[]): GdeltArticle[] {
   })
 }
 
-function toNewsItems(articles: GdeltArticle[], category: Category | ((title: string) => Category)): NewsItem[] {
-  return dedupe(articles)
-    // Belt-and-suspenders alongside the sourcelang:english query filter, which
-    // isn't always exact — drop anything GDELT itself doesn't tag as English.
-    .filter((a) => a.socialimage && (!a.language || a.language === 'English'))
-    .map((a) => {
-      const resolvedCategory = typeof category === 'function' ? category(a.title) : category
-      const item: NewsItem = {
-        id: '',
-        title: a.title.trim(),
-        url: a.url,
-        image: a.socialimage!,
-        domain: a.domain,
-        publishedAt: parseSeenDate(a.seendate),
-        category: resolvedCategory,
-      }
-      return { ...item, id: encodeNewsId(item) }
-    })
+// A missing photo doesn't make a story less real — it just falls back to the
+// ImageOff placeholder in NewsCard instead of being dropped from the feed.
+function toNewsItems(articles: GnewsArticle[], category: Category | ((title: string) => Category)): NewsItem[] {
+  return dedupe(articles).map((a) => {
+    const resolvedCategory = typeof category === 'function' ? category(a.title) : category
+    const item: NewsItem = {
+      id: '',
+      title: a.title.trim(),
+      description: a.description?.trim() || undefined,
+      url: a.url,
+      image: a.image ?? '',
+      domain: a.source.name,
+      publishedAt: new Date(a.publishedAt).toISOString(),
+      category: resolvedCategory,
+    }
+    return { ...item, id: encodeNewsId(item) }
+  })
 }
 
-export async function fetchCategoryNews(category: Category, maxrecords = 40): Promise<NewsItem[]> {
+export async function fetchCategoryNews(category: Category, max = MAX_RESULTS): Promise<NewsItem[]> {
   const cacheKey = `news:${category}`
   const cached = readCache(cacheKey)
   if (cached) return cached
 
-  const articles = await queryGdelt(CATEGORY_QUERY[category], maxrecords)
+  const articles = await queryGnews(CATEGORY_QUERY[category], max)
   const items = toNewsItems(articles, category)
   writeCache(cacheKey, items)
   return items
 }
 
 export async function fetchAllCategories(): Promise<Record<Category, NewsItem[]>> {
-  const cacheKey = 'news:all'
-  const cached = readCache(cacheKey)
-  const items = cached ?? (await fetchCombined())
+  // Sequential, not Promise.all, with a gap between actual network calls —
+  // see the note above CACHE_TTL_MS. Cache hits skip the gap since they don't
+  // touch the network.
+  const result = {} as Record<Category, NewsItem[]>
+  const categories: Category[] = ['cinema', 'series', 'games']
 
-  return {
-    cinema: items.filter((item) => item.category === 'cinema'),
-    series: items.filter((item) => item.category === 'series'),
-    games: items.filter((item) => item.category === 'games'),
+  for (const category of categories) {
+    const wasCached = readCache(`news:${category}`) !== null
+    result[category] = await fetchCategoryNews(category)
+    if (!wasCached) await delay(2000)
   }
 
-  async function fetchCombined(): Promise<NewsItem[]> {
-    const articles = await queryGdelt(COMBINED_QUERY, 90)
-    const mapped = toNewsItems(articles, classifyCategory)
-    writeCache(cacheKey, mapped)
-    return mapped
-  }
+  return result
 }
 
-export async function searchNews(term: string, maxrecords = 30): Promise<NewsItem[]> {
+export async function searchNews(term: string, max = MAX_RESULTS): Promise<NewsItem[]> {
   const trimmed = term.trim()
   if (!trimmed) return []
 
@@ -181,8 +172,8 @@ export async function searchNews(term: string, maxrecords = 30): Promise<NewsIte
   const cached = readCache(cacheKey)
   if (cached) return cached
 
-  const query = `(film score OR movie soundtrack OR tv series score OR video game soundtrack) ${trimmed} sourcelang:english`
-  const articles = await queryGdelt(query, maxrecords)
+  const query = `soundtrack composer ${trimmed}`
+  const articles = await queryGnews(query, max)
   const items = toNewsItems(articles, classifyCategory)
   writeCache(cacheKey, items)
   return items

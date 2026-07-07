@@ -5,6 +5,7 @@ import { CategoryChip } from '@/components/CategoryChip'
 import { SourceMeta } from '@/components/SourceMeta'
 import { NewsCard } from '@/components/NewsCard'
 import { WaveformDivider } from '@/components/WaveformDivider'
+import { WaveformProgress } from '@/components/WaveformProgress'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ArticlePageSkeleton } from '@/components/ArticleSkeleton'
@@ -29,10 +30,12 @@ export const Route = createFileRoute('/news/$slug')({
 function NewsPage() {
   const { item, related } = Route.useLoaderData()
 
-  useDocumentTitle(item.title, `Read the full story on ${item.domain}.`)
+  useDocumentTitle(item.title, item.description ?? `Read the full story on ${item.domain}.`)
 
   return (
     <div>
+      <WaveformProgress seed={item.id} category={item.category} />
+
       <article className="container-editorial max-w-3xl space-y-8 py-10 md:py-14">
         <header className="space-y-4">
           <CategoryChip category={item.category} size="md" />
@@ -46,14 +49,18 @@ function NewsPage() {
           <img src={item.image} alt="" loading="eager" className="size-full object-cover" />
         </div>
 
-        <p className="text-muted">
-          This is a third-party story, aggregated from {item.domain}. soundtracker doesn't republish the
-          original content — read the full coverage directly at the source.
+        {item.description ? (
+          <p className="text-balance text-lg leading-relaxed text-text">{item.description}</p>
+        ) : null}
+
+        <p className="text-sm text-muted">
+          This is a summary of a third-party story from {item.domain}. soundtracker doesn't republish the
+          original article in full — read the complete coverage directly at the source.
         </p>
 
         <Button asChild size="lg">
           <a href={item.url} target="_blank" rel="noopener noreferrer">
-            Read on {item.domain}
+            Read the full story on {item.domain}
             <ExternalLink className="ml-1 size-4" aria-hidden="true" />
           </a>
         </Button>

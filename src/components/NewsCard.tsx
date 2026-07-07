@@ -45,7 +45,7 @@ function CardImage({
   const [broken, setBroken] = useState(false)
   const meta = CATEGORY_META[item.category]
 
-  if (broken) {
+  if (broken || !item.image) {
     return (
       <div
         className={cn('flex items-center justify-center overflow-hidden rounded-sm border border-line bg-surface', className)}
