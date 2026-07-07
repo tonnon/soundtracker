@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute, notFound, Link, type ErrorComponentProps } from '@tanstack/react-router'
+import { createFileRoute, notFound, Link, useRouter, type ErrorComponentProps } from '@tanstack/react-router'
 import { isCategory, CATEGORY_META } from '@/lib/category'
 import type { Category, NewsItem } from '@/data/types'
 import { fetchCategoryNews } from '@/services/news'
@@ -95,13 +95,21 @@ function CategoryNotFound() {
 }
 
 function CategoryError({ reset }: ErrorComponentProps) {
+  const router = useRouter()
+
   return (
     <div className="container-editorial py-10 md:py-14">
       <EmptyState
         title="Couldn't load this section"
         description="The news source may be temporarily unavailable or rate-limiting requests. Wait a few seconds and try again."
         action={
-          <Button variant="outline" onClick={reset}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              router.invalidate()
+              reset()
+            }}
+          >
             Try again
           </Button>
         }

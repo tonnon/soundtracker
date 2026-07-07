@@ -1,4 +1,4 @@
-import { createFileRoute, Link, type ErrorComponentProps } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter, type ErrorComponentProps } from '@tanstack/react-router'
 import { motion, useReducedMotion } from 'motion/react'
 import { fetchAllCategories } from '@/services/news'
 import { CATEGORY_ORDER, CATEGORY_META } from '@/lib/category'
@@ -120,13 +120,21 @@ function HomePending() {
 }
 
 function HomeError({ reset }: ErrorComponentProps) {
+  const router = useRouter()
+
   return (
     <div className="container-editorial py-10 md:py-14">
       <EmptyState
         title="Couldn't load the news"
         description="The news source may be temporarily unavailable or rate-limiting requests. Wait a few seconds and try again."
         action={
-          <Button variant="outline" onClick={reset}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              router.invalidate()
+              reset()
+            }}
+          >
             Try again
           </Button>
         }
